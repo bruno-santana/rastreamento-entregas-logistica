@@ -1,0 +1,88 @@
+services:
+  php:
+    container_name: setup-laravel_php
+    build:
+      context: ./docker/php
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    tty: true
+    volumes:
+      - ./rastreamento-api:/var/www
+      - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+    networks:
+      - setup-laravel_network
+
+  nginx:
+    container_name: setup-laravel_nginx
+    build:
+      context: ./docker/nginx
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    tty: true
+    ports:
+      - '8080:80'
+      - '443:443'
+    volumes:
+      - ./rastreamento-api:/var/www
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+    networks:
+      - setup-laravel_network
+
+  mysql:
+    container_name: setup-laravel_mysql
+    image: mysql:8.0
+    command: --default-authentication-plugin=mysql_native_password
+    restart: always
+    tty: true
+    volumes:
+      - mysql-data:/var/lib/mysql/
+      - ./docker/mysql/my.cnf:/etc/mysql/my.cnf
+    networks:
+      - setup-laravel_network
+    ports:
+      - '3309:3306'
+    environment:
+      MYSQL_DATABASE: db_laravel
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_USER: developer
+      MYSQL_PASSWORD: 123456
+
+  redis:
+    container_name: setup-laravel_redis
+    image: redis:7.2
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - setup-laravel_network
+
+  eventstore:
+    container_name: setup-laravel_eventstore
+    image: postgres:15
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "5439:5432"
+    volumes:
+      - eventstore-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: eventstore
+      POSTGRES_USER: event_user
+      POSTGRES_PASSWORD: event_pass
+    networks:
+      - setup-laravel_network
+
+networks:
+  setup-laravel_network:
+    driver: bridge
+
+volumes:
+  mysql-data:
+    driver: local
+  redis-data:
+    driver: local
+  eventstore-data:
+    driver: local
